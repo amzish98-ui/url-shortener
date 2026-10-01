@@ -1,10 +1,12 @@
 import { useState } from "react";
 
 function App() {
+  // url = input field, shortUrl = result to display, error = validation/server error
   const [url, setUrl] = useState("");
   const [shortUrl, setShortUrl] = useState("");
   const [error, setError] = useState("");
 
+  // same validation idea as the backend, here just for instant feedback before any network call
   const isValidUrl = (value: string): boolean => {
     try {
       new URL(value);
@@ -15,7 +17,7 @@ function App() {
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+    e.preventDefault(); // stops the browser's default full page reload on submit
     setError("");
     setShortUrl("");
 
@@ -25,6 +27,7 @@ function App() {
     }
 
     try {
+      // POST straight to the backend on port 4000
       const response = await fetch("http://localhost:4000", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -38,6 +41,7 @@ function App() {
         return;
       }
 
+      // updates state -> React re-renders, no reload needed
       setShortUrl(data.short_url);
     } catch {
       setError("Could not reach the server");
@@ -62,6 +66,8 @@ function App() {
       {shortUrl && (
         <p>
           Short URL:{" "}
+          {/* full backend address, not the relative shortUrl - a relative /abc123 would
+              resolve against this page's own origin (5173), not the backend (4000) */}
           <a href={`http://localhost:4000${shortUrl}`} target="_blank" rel="noreferrer">
             {`http://localhost:4000${shortUrl}`}
           </a>

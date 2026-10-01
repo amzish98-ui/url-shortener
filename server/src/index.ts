@@ -8,9 +8,11 @@ const PORT = 4000;
 app.use(cors());
 app.use(express.json());
 
+// two maps so lookups are O(1) both ways: redirect needs code->url, dedup check needs url->code
 const codeToUrl = new Map<string, string>();
 const urlToCode = new Map<string, string>();
 
+// reuse JS's own URL parser instead of a fragile hand-written regex
 function isValidUrl(value: unknown): value is string{
     if (typeof value !== "string") return false;
     try {
@@ -21,6 +23,7 @@ function isValidUrl(value: unknown): value is string{
     }
 }
 
+// random hex code; loop regenerates on the rare chance of a collision
 function generateShortCode(): string {
     let code: string;
     do {
@@ -29,6 +32,7 @@ function generateShortCode(): string {
     return code;
 }
 
+// POST / - create a short code for a URL, or reuse one if it already exists
 app.post("/", (req: Request, res: Response) => {
     const { url } = req.body;
 
@@ -36,6 +40,7 @@ app.post("/", (req: Request, res: Response) => {
         return res.status(400).json({ error: "A valid url is required"});
     }
 
+    // dedup: same URL submitted twice returns the same short code
     let code = urlToCode.get(url);
     if (!code) {
         code = generateShortCode();
@@ -46,8 +51,15 @@ app.post("/", (req: Request, res: Response) => {
     res.json({ short_url: `/${code}`, url});
 });
 
+// GET /:code - look up the code and issue a real HTTP 301 redirect, or 404 if unknown
 app.get("/:code", (req: Request, res: Response) => {
     const { code } = req.params;
+
+    // narrows the type for TypeScript; also a real runtime safety net
+    if (typeof code !== "string") {
+        return res.status(400).json({ error: "Invalid code" });
+    }
+
     const url = codeToUrl.get(code);
 
     if (!url) {
